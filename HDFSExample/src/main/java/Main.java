@@ -3,6 +3,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import java.io.BufferedWriter;
+import java.io.FileReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URI;
@@ -14,15 +15,35 @@ public class Main
     public static void main(String[] args) throws Exception
     {
         FileAccess hadoop = new FileAccess("hdfs://af1bc3dc06a8:8020");
-        hadoop.create("/test4");
 
-        if (hadoop.isDirectory("/test4")) {
-            System.out.println("This is directory");
-        } else {
-            System.out.println("This is file");
-        }
+        //hadoop.createFile("/test2.txt");
+       // Test test = new Test();
+        hadoop.append("/test2.txt", "new content");
 
 
+        hadoop.createFile("/file.txt");
+        hadoop.createDir("/newdir");
+
+        hadoop.delete("/file.txt");
+        hadoop.delete("/newdir");
+
+
+
+        //    hadoop.create("/test.txt");
+
+
+
+//        if (hadoop.isDirectory("/test2.txt")) {
+//            System.out.println("This is directory");
+//        } else {
+//            System.out.println("This is file");
+//        }
+//        hadoop.append("/test.txt", "new append0");
+//
+//        hadoop.read("/test.txt");
+
+
+        //hadoop.append("/test.txt", "new append");
 
 //        Configuration configuration = new Configuration();
 //        configuration.set("dfs.client.use.datanode.hostname", "true");
