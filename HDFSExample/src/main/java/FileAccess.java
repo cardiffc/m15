@@ -1,15 +1,10 @@
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 public class FileAccess
@@ -20,7 +15,9 @@ public class FileAccess
      * @param rootPath - the path to the root of HDFS,
      * for example, hdfs://localhost:32771
      */
-    public FileSystem hdfs;
+    private FileSystem hdfs;
+    private List<String> paths;
+
     public FileAccess(String rootPath) throws URISyntaxException, IOException {
         Configuration configuration = new Configuration();
         configuration.set("dfs.client.use.datanode.hostname", "true");
@@ -29,10 +26,9 @@ public class FileAccess
         hdfs = FileSystem.get(
                 new URI(rootPath), configuration
         );
+        paths = new ArrayList<>();
 
     }
-
-    public void print() {}
 
     /**
      * Creates empty file or directory
@@ -66,23 +62,21 @@ public class FileAccess
      * @param content
      */
     public void append(String path, String content) throws IOException {
-        FSDataOutputStream out = hdfs.append(getPath(path));
+        if (!isDirectory(path)) {
+            String oldContent = read(path);
+            String newContent = oldContent + " " + content;
+            delete(path);
+            OutputStream os = hdfs.create(getPath(path));
+            BufferedWriter br = new BufferedWriter(
+                    new OutputStreamWriter(os, "UTF-8")
+            );
+            br.write(newContent);
+            br.flush();
+            br.close();
+        } else {
+            System.out.println("This is directory. Append could not be executed!");
+        }
 
-        out.writeUTF(content);
-        out.flush();
-        out.close();
-//        Path file = new Path(path);
-//        if (hdfs.exists(file) && !hdfs.isDirectory(file)) {
-//            OutputStream os = hdfs.append(file);
-//            BufferedWriter br = new BufferedWriter(
-//                    new OutputStreamWriter(os, "UTF-8")
-//            );
-//            br.write(content);
-//            br.flush();
-//            br.close();
-//        } else {
-//            System.out.println("Append operation could not be permitted!");
-//        }
     }
 
     /**
@@ -92,27 +86,8 @@ public class FileAccess
      * @return
      */
     public String read(String path) throws IOException {
-
-        FSDataInputStream input = hdfs.open(getPath(path));
-        System.out.println(input.toString());
-//        Path file = new Path(path);
-//
-//        File test = new File(hdfs.open(file));
-//
-//
-//
-//        BufferedReader fsdis = new BufferedReader(new InputStreamReader(hdfs.open(file)));
-//        System.out.println(fsdis.readLine());
-
-
-        //new InputStreamReader(new FileInputStream(String.valueOf(hdfs.open(file))));
-
-        //System.out.println(fsdis.readLine());
-
-
-        // FileReader fr = new FileReader();
-
-        return null;
+        BufferedReader br = new BufferedReader(new InputStreamReader(hdfs.open(getPath(path))));
+        return br.readLine();
     }
 
     /**
@@ -141,14 +116,24 @@ public class FileAccess
      * @param path
      * @return
      */
-    public List<String> list(String path)
-    {
-       // hdfs.get
-        return null;
+    public List<String> list(String path) throws IOException {
+        FileStatus[] fs = hdfs.listStatus(getPath(path));
+        for (int i = 0; i < fs.length ; i++) {
+            Path tempPath = fs[i].getPath();
+            if (isDirectory(tempPath.toString())) {
+                if (!paths.contains(tempPath.toString())) {
+                    paths.add(tempPath.toString());
+                }
+                list(tempPath.toString());
+            } else {
+                if (!paths.contains(tempPath.toString())) {
+                    paths.add(fs[i].getPath().toString());
+                }
+            }
+        }
+        return paths;
     }
 
-    private Path getPath (String path) {
-
-        return new Path(path);
-    }
+    public void closeFs () throws IOException {hdfs.close();}
+    private Path getPath (String path) { return new Path(path); }
 }
